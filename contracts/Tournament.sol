@@ -23,4 +23,8 @@ contract Tournament is BaseTournament {
     ) internal override returns (uint256, uint256) {
         // TBD
     }
+
+    function _isWinner(uint256) internal override returns (bool) {
+        // TBD
+    }
 }

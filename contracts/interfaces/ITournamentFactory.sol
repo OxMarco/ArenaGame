@@ -4,6 +4,13 @@ pragma solidity >=0.8.12;
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 interface ITournamentFactory is IERC721 {
+    enum Status {
+        NOT_ENLISTED,
+        PARTICIPANT,
+        WINNER,
+        PRIZE_REDEEMED
+    }
+
     enum SkillType {
         NONE,
         SHIELD,
@@ -23,7 +30,9 @@ interface ITournamentFactory is IERC721 {
         uint256 lifePoints
     ) external;
 
-    function deathHook(uint256 warriorID) external;
+    function deathHook(uint256 warriorID, bool winner) external;
 
     function getWarriorData(uint256 id) external view returns (WarriorData memory);
+
+    function enlist(address _tournament, uint256 warriorID) external payable;
 }
