@@ -1,4 +1,5 @@
-import "@nomiclabs/hardhat-waffle";
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@tenderly/hardhat-tenderly";
 import "@typechain/hardhat";
@@ -13,6 +14,8 @@ import { resolve } from "path";
 
 import { config as dotenvConfig } from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
+
+import "./scripts/deploy";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 

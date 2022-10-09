@@ -16,8 +16,9 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
     uint256 public counter;
     uint256 public mintPrice;
     bool public transferrable;
+    address public defaultBattleHandler;
 
-    event NewTournamentHasStarted(address indexed tournament, uint256 duration);
+    event NewTournamentCreated(address indexed tournament, uint256 duration);
     event PrizeWasRedeemed(address indexed tournament, uint256 indexed warriorID, uint256 score, uint256 prize);
 
     error Invalid_Duration();
@@ -30,11 +31,13 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
         string memory name,
         string memory symbol,
         uint256 price,
-        bool _transferrable
+        bool _transferrable,
+        address _defaultBattleHandler
     ) ERC721(name, symbol) {
         counter = 0;
         mintPrice = price;
         transferrable = _transferrable;
+        defaultBattleHandler = _defaultBattleHandler;
     }
 
     modifier onlyTournament() {
@@ -52,6 +55,10 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
         mintPrice = price;
     }
 
+    function setDefaultBattleHandler(address handler) external onlyOwner {
+        defaultBattleHandler = handler;
+    }
+
     function newTournament(
         uint256 price,
         uint256 duration,
@@ -59,10 +66,10 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
     ) external override onlyOwner {
         if (duration < 1 days) revert Invalid_Duration();
 
-        address tournament = address(new Tournament(price, duration, lifePoints));
+        address tournament = address(new Tournament(price, duration, lifePoints, defaultBattleHandler));
         tournaments[tournament] = true;
 
-        emit NewTournamentHasStarted(tournament, duration);
+        emit NewTournamentCreated(tournament, duration);
     }
 
     // -------- User-facing functions --------
@@ -90,8 +97,7 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
 
         if (history[_tournament][warriorID] != Status.WINNER)
             revert Warrior_Not_Eligible_For_A_Prize(_tournament, warriorID);
-        if (history[_tournament][warriorID] == Status.PRIZE_REDEEMED)
-            revert Already_Claimed(_tournament, warriorID);
+        if (history[_tournament][warriorID] == Status.PRIZE_REDEEMED) revert Already_Claimed(_tournament, warriorID);
         history[_tournament][warriorID] = Status.PRIZE_REDEEMED;
 
         ITournament tournament = ITournament(_tournament);
