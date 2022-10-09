@@ -8,7 +8,7 @@ interface ITournament {
 
     function start() external;
 
-    function battle(uint256 attackerID, uint256 defenderID) external;
+    function dailyCombat() external;
 
     function priceToJoin() external view returns (uint256);
 

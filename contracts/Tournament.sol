@@ -12,6 +12,7 @@ contract Tournament is ITournament {
     uint256 public immutable priceToJoin;
     uint256 public immutable totalDuration;
     uint256 public startTime;
+    uint256 public latestTrigger;
     uint256 public immutable initialLifePoints;
     mapping(uint256 => uint256) public scores;
 
@@ -31,8 +32,10 @@ contract Tournament is ITournament {
     event BattleLogicHandlerWasChanged(address indexed handler);
 
     error Invalid_WarriorID(uint256 id);
-    error Already_Enlisted();
     error Starting_Condition_Unmet();
+    error Already_Enlisted();
+    error Already_Started();
+    error Execution_Throttled();
 
     constructor(
         uint256 price,
@@ -47,6 +50,7 @@ contract Tournament is ITournament {
 
         factory = ITournamentFactory(msg.sender);
         startTime = 0;
+        latestTrigger = 0;
         totalPax = 0;
         priceToJoin = price;
         totalDuration = duration;
@@ -58,6 +62,8 @@ contract Tournament is ITournament {
         _;
     }
 
+    // Governance functions
+
     function setBattleLogicHandler(address _battleHandler) external {
         assert(msg.sender == owner);
 
@@ -66,7 +72,9 @@ contract Tournament is ITournament {
         emit BattleLogicHandlerWasChanged(_battleHandler);
     }
 
-    function isActive() external view override returns (bool) {
+    // State getter functions
+
+    function isActive() public view override returns (bool) {
         return (startTime != 0 && totalDuration - startTime < block.timestamp);
     }
 
@@ -78,8 +86,11 @@ contract Tournament is ITournament {
         return totalPax * priceToJoin;
     }
 
+    // Public facing functions
+
     function enlist(uint256 warriorID) external override onlyFactory {
         if (warriors[warriorID].enlisted) revert Already_Enlisted();
+        if (startTime != 0) revert Already_Started();
 
         ITournamentFactory.WarriorData memory data = factory.getWarriorData(warriorID);
         warriors[warriorID] = GameData(data.xp, data.skill, initialLifePoints, 0, true);
@@ -88,7 +99,7 @@ contract Tournament is ITournament {
         emit NewWarriorEnlisted(warriorID);
     }
 
-    function start() external {
+    function start() external override {
         if (!_start()) revert Starting_Condition_Unmet();
 
         startTime = block.timestamp;
@@ -96,9 +107,23 @@ contract Tournament is ITournament {
         emit TournamentStarted();
     }
 
-    function battle(uint256 attackerID, uint256 defenderID) external {
+    function dailyCombat() external override {
+        assert(isActive());
+        if (latestTrigger + 1 days < block.timestamp) revert Execution_Throttled();
+
+        // TBD
+        // - battle logic
+        // - premium for execution
+    }
+
+    // Internal functions
+
+    function _battle(uint256 attackerID, uint256 defenderID) internal {
         GameData storage attacker = warriors[attackerID];
         GameData storage defender = warriors[defenderID];
+
+        assert(attacker.lifePoints > 0);
+        assert(defender.lifePoints > 0);
 
         if (!attacker.enlisted) revert Invalid_WarriorID(attackerID);
         if (!defender.enlisted) revert Invalid_WarriorID(defenderID);
@@ -110,13 +135,13 @@ contract Tournament is ITournament {
             defender.skill
         );
         if (attackerLifePoints == 0) {
-            die(attackerID);
+            _die(attackerID);
         } else {
             attacker.lifePoints = attackerLifePoints;
         }
 
         if (defenderLifePoints == 0) {
-            die(defenderID);
+            _die(defenderID);
         } else {
             defender.lifePoints = defenderLifePoints;
         }
@@ -124,7 +149,7 @@ contract Tournament is ITournament {
         // TBD - assign score
     }
 
-    function die(uint256 warriorID) internal {
+    function _die(uint256 warriorID) internal {
         delete warriors[warriorID];
 
         ITournamentFactory(factory).deathHook(warriorID, _isWinner(warriorID));

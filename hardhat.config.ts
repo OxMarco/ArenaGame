@@ -32,7 +32,7 @@ const config: HardhatUserConfig = {
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     currency: "USD",
     enabled: process.env.REPORT_GAS == "true" ? true : false,
-    excludeContracts: ["contracts/mocks/", "contracts/libraries/"],
+    excludeContracts: ["contracts/libraries/"],
     src: "./contracts",
   },
   etherscan: {
@@ -43,8 +43,8 @@ const config: HardhatUserConfig = {
       chainId: 31337,
       forking: {
         enabled: process.env.FORKING == "true" ? true : false,
-        url: "https://eth-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
-        blockNumber: 14967494,
+        url: "https://polygon-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_API_KEY,
+        blockNumber: 34120286,
       },
     },
   },
