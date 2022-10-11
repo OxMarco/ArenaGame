@@ -84,10 +84,12 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
 
     // -------- User-facing functions --------
 
-    function mint() external payable {
+    function mint(uint8 skill) external payable {
         if (msg.value != mintPrice) revert Invalid_Value_Transferred();
 
         _mint(msg.sender, counter++);
+
+        warriors[counter] = WarriorData(0, ITournamentFactory.SkillType(skill));
 
         IAave(aave).depositETH{ value: msg.value }(pool, address(this), 0);
     }
