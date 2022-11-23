@@ -1,38 +1,23 @@
-import { types } from "hardhat/config";
-import { HardhatRuntimeEnvironment, TaskArguments } from "hardhat/types";
+import { ethers } from "hardhat";
 
-task("deploy", "Deploy the game contracts")
-  .addOptionalParam("noverify", "Skip verification", true, types.boolean)
-  .setAction(async (taskArgs: TaskArguments, hre: HardhatRuntimeEnvironment) => {
-    const noverify = taskArgs.noverify;
+async function main() {
+  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
+  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
+  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
 
-    const BattleLogicHandler = await hre.ethers.getContractFactory("BattleLogicHandler");
-    const handler = await BattleLogicHandler.deploy();
-    await handler.deployed();
-    console.log(`BattleLogicHandler deployed to ${handler.address}`);
+  const lockedAmount = ethers.utils.parseEther("1");
 
-    if (!noverify) {
-      await hre.run("verify:verify", {
-        address: handler.address,
-        constructorArguments: [],
-      });
-    }
+  const Lock = await ethers.getContractFactory("Lock");
+  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
 
-    const TournamentFactory = await hre.ethers.getContractFactory("TournamentFactory");
-    const factory = await TournamentFactory.deploy(
-      "Test Warrior",
-      "WRR",
-      hre.ethers.utils.parseEther("1.0"),
-      true,
-      handler.address,
-    );
-    await factory.deployed();
-    console.log(`TournamentFactory deployed to ${factory.address}`);
+  await lock.deployed();
 
-    if (!noverify) {
-      await hre.run("verify:verify", {
-        address: factory.address,
-        constructorArguments: ["Test Warrior", "WRR", hre.ethers.utils.parseEther("1.0"), true, handler.address],
-      });
-    }
-  });
+  console.log(`Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`);
+}
+
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -1,6 +1,13 @@
-# Urbe Arena Game
-A nice on-chain playto earn game.
+# Sample Hardhat Project
 
-Here you can find more info: https://www.notion.so/Welcome-to-UrbeArena-aa7b4f1c413e4ba8937a88d93df979cc
+This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
 
-Join Urbe.eth Discord: https://discord.gg/fHRaHpnp
+Try running some of the following tasks:
+
+```shell
+npx hardhat help
+npx hardhat test
+REPORT_GAS=true npx hardhat test
+npx hardhat node
+npx hardhat run scripts/deploy.ts
+```

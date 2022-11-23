@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.12;
+pragma solidity >=0.8.0;
 
 interface ITournament {
     function isActive() external view returns (bool);
@@ -8,7 +8,10 @@ interface ITournament {
 
     function start() external;
 
-    function dailyCombat() external;
+    //function dailyCombat() external;
+    function battle(uint256 attackerID, uint256 defenderID) external;
+
+    function randomBattle(uint256 attackerID, uint256 defenderID) external;
 
     function priceToJoin() external view returns (uint256);
 

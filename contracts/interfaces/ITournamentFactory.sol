@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.12;
+pragma solidity >=0.8.0;
 
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
 interface ITournamentFactory is IERC721 {
     enum Status {
         NOT_ENLISTED,
@@ -12,11 +11,9 @@ interface ITournamentFactory is IERC721 {
     }
 
     enum SkillType {
-        NONE,
-        SHIELD,
-        SPEAR,
-        SWORD,
-        GOD
+        TRACE,
+        HOPLOMACHUS,
+        RETIARIUS
     }
 
     struct WarriorData {

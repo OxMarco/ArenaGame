@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.12;
+pragma solidity >=0.8.0;
 
 import { ITournamentFactory } from "./interfaces/ITournamentFactory.sol";
 import { ITournament } from "./interfaces/ITournament.sol";
 import { IBattleLogicHandler } from "./interfaces/IBattleLogicHandler.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract Tournament is ITournament {
     address public immutable owner;
     ITournamentFactory public immutable factory;
     IBattleLogicHandler public battleHandler;
-    uint256 public immutable priceToJoin;
+    address public GladiatorCollection;
+    uint256 public immutable override priceToJoin;
     uint256 public immutable totalDuration;
     uint256 public startTime;
     uint256 public latestTrigger;
     uint256 public immutable initialLifePoints;
-    mapping(uint256 => uint256) public scores;
+    uint256 public lastDayClosed;
+    uint256 public day;
+    mapping(uint256 => uint256) public override scores;
 
     struct GameData {
         uint256 xp;
@@ -22,9 +26,11 @@ contract Tournament is ITournament {
         uint256 lifePoints;
         uint256 attacks;
         bool enlisted;
+        uint256 lastAttackDay;
     }
+
     mapping(uint256 => GameData) public warriors;
-    uint256 public totalPax;
+    uint256 public override totalPax;
 
     event TournamentStarted();
     event NewWarriorEnlisted(uint256 indexed warriorID);
@@ -36,6 +42,8 @@ contract Tournament is ITournament {
     error Already_Enlisted();
     error Already_Started();
     error Execution_Throttled();
+    error Only_Random_Battle_Allowed();
+    error Only_Battle_Allowed();
 
     constructor(
         uint256 price,
@@ -49,6 +57,7 @@ contract Tournament is ITournament {
         owner = abi.decode(data, (address));
 
         factory = ITournamentFactory(msg.sender);
+        GladiatorCollection = msg.sender;
         startTime = 0;
         latestTrigger = 0;
         totalPax = 0;
@@ -93,7 +102,7 @@ contract Tournament is ITournament {
         if (startTime != 0) revert Already_Started();
 
         ITournamentFactory.WarriorData memory data = factory.getWarriorData(warriorID);
-        warriors[warriorID] = GameData(data.xp, data.skill, initialLifePoints, 0, true);
+        warriors[warriorID] = GameData(data.xp, data.skill, initialLifePoints, 0, true, 0);
         totalPax++;
 
         emit NewWarriorEnlisted(warriorID);
@@ -101,24 +110,48 @@ contract Tournament is ITournament {
 
     function start() external override {
         if (!_start()) revert Starting_Condition_Unmet();
-
         startTime = block.timestamp;
-
+        lastDayClosed = startTime;
         emit TournamentStarted();
     }
-
-    function dailyCombat() external override {
+    
+    function battle(uint256 attackerID, uint256 defenderID) external override {
         assert(isActive());
-        if (latestTrigger + 1 days < block.timestamp) revert Execution_Throttled();
-
-        // TBD
-        // - battle logic
+        assert(IERC721(GladiatorCollection).ownerOf(attackerID) == msg.sender);
+        if(checkPeriod() != 1) revert Only_Random_Battle_Allowed();
+        _battle(attackerID, defenderID);
+    }
+    
+    function randomBattle(uint256 attackerID, uint256 defenderID) external override {
+        assert(isActive());
+        if(checkPeriod() != 2) revert Only_Battle_Allowed();
+        _battle(attackerID, defenderID);
+        // maybe add a onlyRelayer modifier if we want that this randon battle is only executed by a Relayer address
         // - premium for execution
+    }
+    
+    function checkPeriod() public view returns (uint256) {
+        uint256 period = (lastDayClosed + 1 days) - 1 hours;
+        if (lastDayClosed < block.timestamp && block.timestamp <= period) {
+            return 1;
+        }
+        if (period < block.timestamp && block.timestamp <= (period + 1 hours)) {
+            return 2;
+        }
+        else {
+            return 100;
+        }
     }
 
     // Internal functions
 
     function _battle(uint256 attackerID, uint256 defenderID) internal {
+        if (block.timestamp >= lastDayClosed + 1 days) {
+            lastDayClosed = block.timestamp;
+            day++;
+        }
+        require(warriors[attackerID].lastAttackDay < day);
+        
         GameData storage attacker = warriors[attackerID];
         GameData storage defender = warriors[defenderID];
 
@@ -131,8 +164,10 @@ contract Tournament is ITournament {
         (uint256 attackerLifePoints, uint256 defenderLifePoints) = battleHandler.attack(
             attacker.xp,
             attacker.skill,
+            attacker.lifePoints,
             defender.xp,
-            defender.skill
+            defender.skill,
+            defender.lifePoints
         );
         if (attackerLifePoints == 0) {
             _die(attackerID);
@@ -145,8 +180,9 @@ contract Tournament is ITournament {
         } else {
             defender.lifePoints = defenderLifePoints;
         }
-
-        // TBD - assign score
+        
+        warriors[attackerID].lastAttackDay = day;
+        attacker.xp += 1;
     }
 
     function _die(uint256 warriorID) internal {

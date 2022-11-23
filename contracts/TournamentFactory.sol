@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.12;
+pragma solidity >=0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -8,6 +8,7 @@ import { ITournamentFactory } from "./interfaces/ITournamentFactory.sol";
 import { ITournament } from "./interfaces/ITournament.sol";
 import { IAave } from "./interfaces/IAave.sol";
 import { Tournament } from "./Tournament.sol";
+import "hardhat/console.sol";
 
 contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
     mapping(address => bool) public tournaments;
@@ -77,9 +78,11 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
         if (duration < 1 days) revert Invalid_Duration();
 
         address tournament = address(new Tournament(price, duration, lifePoints, defaultBattleHandler));
+        //console.log(tournament);
         tournaments[tournament] = true;
 
         emit NewTournamentCreated(tournament, duration);
+        //console.log(duration);
     }
 
     // -------- User-facing functions --------
@@ -132,15 +135,15 @@ contract TournamentFactory is ITournamentFactory, ERC721, Ownable {
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 batchSize
     ) internal override(ERC721) {
         assert(transferrable); // soulbound NFTs
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, tokenId,batchSize);
     }
 
     function deathHook(uint256 warriorID, bool winner) external override onlyTournament {
         history[msg.sender][warriorID] = winner ? Status.WINNER : Status.PARTICIPANT;
-
         // do something
     }
 }
